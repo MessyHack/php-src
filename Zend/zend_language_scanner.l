@@ -69,6 +69,7 @@
 #define yyless(x)    do { YYCURSOR = (unsigned char*)yytext + x; \
                           yyleng   = (unsigned int)x; } while(0)
 #define yymore()     goto yymore_restart
+#define yylloc       CG(yy_lloc)
 
 /* perform sanity check. If this message is triggered you should
    increase the ZEND_MMAP_AHEAD value in the zend_streams.h file */
@@ -99,7 +100,7 @@ do {																			\
 																				\
 	while (p<boundary) {														\
 		if (*p == '\n' || (*p == '\r' && (*(p+1) != '\n'))) {					\
-			CG(zend_lineno)++;													\
+			yylloc.last_line++;													\
 		}																		\
 		p++;																	\
 	}																			\
@@ -108,7 +109,7 @@ do {																			\
 #define HANDLE_NEWLINE(c) \
 { \
 	if (c == '\n' || c == '\r') { \
-		CG(zend_lineno)++; \
+		yylloc.last_line++; \
 	} \
 }
 
@@ -556,10 +557,10 @@ ZEND_API int open_file_for_scanning(zend_file_handle *file_handle)
 	zend_string_release(compiled_filename);
 
 	if (CG(start_lineno)) {
-		CG(zend_lineno) = CG(start_lineno);
+		yylloc.last_line = CG(start_lineno);
 		CG(start_lineno) = 0;
 	} else {
-		CG(zend_lineno) = 1;
+		yylloc.last_line = 1;
 	}
 
 	RESET_DOC_COMMENT();
@@ -607,7 +608,7 @@ ZEND_API zend_op_array *compile_file(zend_file_handle *file_handle, int type)
 			zend_compile_top_stmt(CG(ast));
 			zend_emit_final_return(&retval_zv);
 			op_array->line_start = 1;
-			op_array->line_end = CG(zend_lineno);
+			op_array->line_end = yylloc.last_line;
 			pass_two(op_array);
 			zend_oparray_context_end(&original_oparray_context);
 			zend_file_context_end(&original_file_context);
@@ -704,7 +705,7 @@ ZEND_API int zend_prepare_string_for_scanning(zval *str, char *filename)
 	new_compiled_filename = zend_string_init(filename, strlen(filename), 0);
 	zend_set_compiled_filename(new_compiled_filename);
 	zend_string_release(new_compiled_filename);
-	CG(zend_lineno) = 1;
+	yylloc.last_line = 1;
 	CG(increment_lineno) = 0;
 	RESET_DOC_COMMENT();
 	return SUCCESS;
@@ -772,7 +773,7 @@ zend_op_array *compile_string(zval *source_string, char *filename)
 			zend_compile_top_stmt(CG(ast));
 			zend_emit_final_return(NULL);
 			op_array->line_start = 1;
-			op_array->line_end = CG(zend_lineno);
+			op_array->line_end = yylloc.last_line;
 			pass_two(op_array);
 			zend_oparray_context_end(&original_oparray_context);
 			zend_file_context_end(&original_file_context);
@@ -1079,7 +1080,7 @@ static int zend_scan_escape_string(zval *zendlval, char *str, int len, char quot
 		}
 
 		if (*s == '\n' || (*s == '\r' && (*(s+1) != '\n'))) {
-			CG(zend_lineno)++;
+			yylloc.last_line++;
 		}
 		s++;
 	}
@@ -1109,7 +1110,7 @@ static zend_always_inline int emit_token(int token, int token_line)
 int lex_scan(zval *zendlval)
 {
 
-int start_line = CG(zend_lineno);
+int start_line = yylloc.last_line;
 
 restart:
 	SCNG(yy_text) = YYCURSOR;
@@ -1912,7 +1913,7 @@ inline_char_handler:
 				}
 				/* fall through */
 			case '\n':
-				CG(zend_lineno)++;
+				yylloc.last_line++;
 				break;
 			case '?':
 				if (*YYCURSOR == '>') {
@@ -1951,7 +1952,7 @@ inline_char_handler:
 	if (YYCURSOR < YYLIMIT) {
 		YYCURSOR++;
 	} else {
-		zend_error(E_COMPILE_WARNING, "Unterminated comment starting line %d", CG(zend_lineno));
+		zend_error(E_COMPILE_WARNING, "Unterminated comment starting line %d", yylloc.last_line);
 	}
 
 	yyleng = YYCURSOR - SCNG(yy_text);
@@ -2022,7 +2023,7 @@ inline_char_handler:
 		}
 
 		if (*s == '\n' || (*s == '\r' && (*(s+1) != '\n'))) {
-			CG(zend_lineno)++;
+			yylloc.last_line++;
 		}
 		s++;
 	}
@@ -2087,7 +2088,7 @@ inline_char_handler:
 	int bprefix = (yytext[0] != '<') ? 1 : 0;
 	zend_heredoc_label *heredoc_label = emalloc(sizeof(zend_heredoc_label));
 
-	CG(zend_lineno)++;
+	yylloc.last_line++;
 	heredoc_label->length = yyleng-bprefix-3-1-(yytext[yyleng-2]=='\r'?1:0);
 	s = yytext+bprefix+3;
 	while ((*s == ' ') || (*s == '\t')) {
