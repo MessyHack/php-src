@@ -215,7 +215,7 @@ ZEND_API void zend_save_lexical_state(zend_lex_state *lex_state)
 	lex_state->in = SCNG(yy_in);
 	lex_state->yy_state = YYSTATE;
 	lex_state->filename = zend_get_compiled_filename();
-	lex_state->lineno = CG(zend_lineno);
+        lex_state->yy_lloc = CG(yy_lloc);
 
 	lex_state->script_org = SCNG(script_org);
 	lex_state->script_org_size = SCNG(script_org_size);
@@ -249,7 +249,7 @@ ZEND_API void zend_restore_lexical_state(zend_lex_state *lex_state)
 
 	SCNG(yy_in) = lex_state->in;
 	YYSETCONDITION(lex_state->yy_state);
-	CG(zend_lineno) = lex_state->lineno;
+	CG(yy_lloc) = lex_state->yy_lloc;
 	zend_restore_compiled_filename(lex_state->filename);
 
 	if (SCNG(script_filtered)) {
@@ -562,6 +562,7 @@ ZEND_API int open_file_for_scanning(zend_file_handle *file_handle)
 	} else {
 		yylloc.last_line = 1;
 	}
+        yylloc.first_line = yylloc.last_line;
 
 	RESET_DOC_COMMENT();
 	CG(increment_lineno) = 0;
@@ -706,6 +707,7 @@ ZEND_API int zend_prepare_string_for_scanning(zval *str, char *filename)
 	zend_set_compiled_filename(new_compiled_filename);
 	zend_string_release(new_compiled_filename);
 	yylloc.last_line = 1;
+        yylloc.first_line = 1;
 	CG(increment_lineno) = 0;
 	RESET_DOC_COMMENT();
 	return SUCCESS;
@@ -1111,6 +1113,7 @@ int lex_scan(zval *zendlval)
 {
 
 int start_line = yylloc.last_line;
+yylloc.first_line = start_line;
 
 restart:
 	SCNG(yy_text) = YYCURSOR;

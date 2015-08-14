@@ -151,10 +151,20 @@ enum _zend_ast_kind {
 typedef uint16_t zend_ast_kind;
 typedef uint16_t zend_ast_attr;
 
+typedef struct _zend_parser_locations {
+	int last_line;
+	int first_line;
+	int first_column;
+	int last_column;
+} zend_parser_locations;
+
 struct _zend_ast {
 	zend_ast_kind kind; /* Type of the node (ZEND_AST_* enum constant) */
 	zend_ast_attr attr; /* Additional attribute, use depending on node type */
-	uint32_t lineno;    /* Line number */
+        union {
+            uint32_t lineno;    /* Line number */
+            zend_parser_locations loc; /* Parser location information */
+        };
 	zend_ast *child[1]; /* Array of children (using struct hack) */
 };
 
@@ -162,7 +172,10 @@ struct _zend_ast {
 typedef struct _zend_ast_list {
 	zend_ast_kind kind;
 	zend_ast_attr attr;
-	uint32_t lineno;
+        union {
+            uint32_t lineno;
+            zend_parser_locations loc;
+        };
 	uint32_t children;
 	zend_ast *child[1];
 } zend_ast_list;
@@ -241,6 +254,24 @@ static zend_always_inline uint32_t zend_ast_get_lineno(zend_ast *ast) {
 		return zv->u2.lineno;
 	} else {
 		return ast->lineno;
+	}
+}
+
+static zend_always_inline zend_bool zend_ast_is_decl(zend_ast *ast) {
+        return ((ast->kind == ZEND_AST_FUNC_DECL) ||
+		(ast->kind == ZEND_AST_CLOSURE) ||
+		(ast->kind == ZEND_AST_METHOD) ||
+		(ast->kind == ZEND_AST_CLASS));
+}
+
+static zend_always_inline uint32_t zend_ast_get_first_lineno(zend_ast *ast) {
+	if (ast->kind == ZEND_AST_ZVAL) {
+		zval *zv = zend_ast_get_zval(ast);
+		return zv->u2.lineno;
+	} else if (zend_ast_is_decl(ast)) {
+	        return ((zend_ast_decl *)ast)->start_lineno;
+	} else {
+		return ast->loc.first_line;
 	}
 }
 

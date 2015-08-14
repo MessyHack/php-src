@@ -52,7 +52,7 @@ ZEND_API zend_ast *zend_ast_create_znode(znode *node) {
 	ast = zend_ast_alloc(sizeof(zend_ast_znode));
 	ast->kind = ZEND_AST_ZNODE;
 	ast->attr = 0;
-	ast->lineno = CG(zend_lineno);
+	ast->lineno = CG(yy_lloc).last_line;
 	ast->node = *node;
 	return (zend_ast *) ast;
 }
@@ -64,7 +64,7 @@ ZEND_API zend_ast *zend_ast_create_zval_ex(zval *zv, zend_ast_attr attr) {
 	ast->kind = ZEND_AST_ZVAL;
 	ast->attr = attr;
 	ZVAL_COPY_VALUE(&ast->val, zv);
-	ast->val.u2.lineno = CG(zend_lineno);
+	ast->val.u2.lineno = CG(yy_lloc).last_line;
 	return (zend_ast *) ast;
 }
 
@@ -98,20 +98,28 @@ static zend_ast *zend_ast_create_from_va_list(zend_ast_kind kind, zend_ast_attr 
 	ast = zend_ast_alloc(zend_ast_size(children));
 	ast->kind = kind;
 	ast->attr = attr;
-	ast->lineno = (uint32_t) -1;
+	ast->loc.last_line = (uint32_t) -1;
+	ast->loc.first_line = (uint32_t)-1;
 
 	for (i = 0; i < children; ++i) {
 		ast->child[i] = va_arg(va, zend_ast *);
 		if (ast->child[i] != NULL) {
 			uint32_t lineno = zend_ast_get_lineno(ast->child[i]);
-			if (lineno < ast->lineno) {
-				ast->lineno = lineno;
+			if (lineno < ast->loc.last_line) {
+				ast->loc.last_line = lineno;
+			}
+			lineno = zend_ast_get_first_lineno(ast->child[i]);
+			if (lineno < ast->loc.first_line) {
+			        ast->loc.first_line = lineno;
 			}
 		}
 	}
 
-	if (ast->lineno == UINT_MAX) {
-		ast->lineno = CG(zend_lineno);
+	if (ast->loc.last_line == UINT_MAX) {
+	    ast->loc.last_line = CG(yy_lloc).last_line;
+	}
+	if (ast->loc.first_line == UINT_MAX) {
+	  ast->loc.first_line = CG(yy_lloc).first_line;
 	}
 
 	return ast;
@@ -147,7 +155,7 @@ ZEND_API zend_ast *zend_ast_create_list(uint32_t init_children, zend_ast_kind ki
 	list = (zend_ast_list *) ast;
 	list->kind = kind;
 	list->attr = 0;
-	list->lineno = CG(zend_lineno);
+	list->loc = CG(yy_lloc);
 	list->children = 0;
 
 	{

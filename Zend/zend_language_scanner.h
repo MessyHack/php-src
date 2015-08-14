@@ -34,7 +34,11 @@ typedef struct _zend_lex_state {
 	zend_ptr_stack heredoc_label_stack;
 
 	zend_file_handle *in;
-	uint lineno;
+	union {
+	    uint lineno;
+		zend_parser_locations yy_lloc;
+	};
+    //uint lineno;
 	zend_string *filename;
 
 	/* original (unfiltered) script */

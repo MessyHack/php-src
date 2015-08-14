@@ -1565,6 +1565,9 @@ int zendlex(zend_parser_stack_elem *elem, zend_parser_locations *loc) /* {{{ */
 
 again:
 	ZVAL_UNDEF(&zv);
+
+	CG(yy_lloc).first_line = CG(yy_lloc).last_line;
+
 	retval = lex_scan(&zv);
 	if (EG(exception)) {
 		*loc = CG(yy_lloc);

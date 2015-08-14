@@ -35,10 +35,13 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 
 #define YYERROR_VERBOSE
 #define YYSTYPE zend_parser_stack_elem
-
 #define YYLTYPE zend_parser_locations
-#define YYLTYPE_IS_TRIVIAL 1
-#define YYLTYPE_IS_DECLARED 1
+
+#define ZEND_AST_UPDATE_LOCATION(ast, start, end) ({	\
+		(ast)->loc.first_line = (start).first_line; \
+		(ast)->loc.last_line = (end).last_line; \
+		(ast)->loc.first_column = (start).first_column; \
+		(ast)->loc.last_column = (end).last_column; })
 
 #ifdef _MSC_VER
 #define YYMALLOC malloc
@@ -52,6 +55,11 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 %expect 0
 
 %code requires {
+}
+
+%initial-action {
+    /* use lexer state which has already been initialized */
+    yylloc = CG(yy_lloc);
 }
 
 %destructor { zend_ast_destroy($$); } <ast>
@@ -1032,8 +1040,16 @@ ctor_arguments:
 
 
 dereferencable_scalar:
-		T_ARRAY '(' array_pair_list ')'	{ $$ = $3; }
-	|	'[' array_pair_list ']'			{ $$ = $2; }
+		T_ARRAY '(' array_pair_list ')'
+		{
+			$$ = $3;
+			ZEND_AST_UPDATE_LOCATION($$, @1, @4);
+		}
+    |   '[' array_pair_list ']'
+	    {
+			$$ = $2;
+			ZEND_AST_UPDATE_LOCATION($$, @1, @3);
+		}
 	|	T_CONSTANT_ENCAPSED_STRING		{ $$ = $1; }
 ;
 
@@ -1175,14 +1191,14 @@ assignment_list_element:
 
 array_pair_list:
 		/* empty */ { $$ = zend_ast_create_list(0, ZEND_AST_ARRAY); }
-	|	non_empty_array_pair_list possible_comma { $$ = $1; }
+    |	non_empty_array_pair_list possible_comma { $$ = $1; }
 ;
 
 non_empty_array_pair_list:
 		non_empty_array_pair_list ',' array_pair
-			{ $$ = zend_ast_list_add($1, $3); }
+		{ $$ = zend_ast_list_add($1, $3); }
 	|	array_pair
-			{ $$ = zend_ast_create_list(1, ZEND_AST_ARRAY, $1); }
+	    { $$ = zend_ast_create_list(1, ZEND_AST_ARRAY, $1); }
 ;
 
 array_pair:

@@ -143,13 +143,6 @@ typedef union _zend_parser_stack_elem {
 	zend_ulong num;
 } zend_parser_stack_elem;
 
-typedef struct _zend_parser_locations {
-	int last_line;
-	int first_line;
-	int first_column;
-	int last_column;
-} zend_parser_locations;
-
 void zend_compile_top_stmt(zend_ast *ast);
 void zend_compile_stmt(zend_ast *ast);
 void zend_compile_expr(znode *node, zend_ast *ast);
