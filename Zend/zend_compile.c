@@ -1551,7 +1551,7 @@ ZEND_API void zend_activate_auto_globals(void) /* {{{ */
 }
 /* }}} */
 
-int zendlex(zend_parser_stack_elem *elem) /* {{{ */
+int zendlex(zend_parser_stack_elem *elem, zend_parser_locations *loc) /* {{{ */
 {
 	zval zv;
 	int retval;

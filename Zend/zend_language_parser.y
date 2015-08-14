@@ -35,6 +35,7 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 
 #define YYERROR_VERBOSE
 #define YYSTYPE zend_parser_stack_elem
+#define YYLTYPE zend_parser_locations
 
 #ifdef _MSC_VER
 #define YYMALLOC malloc
@@ -44,6 +45,7 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 %}
 
 %pure_parser
+%locations
 %expect 0
 
 %code requires {
